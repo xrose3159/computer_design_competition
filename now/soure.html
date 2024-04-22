@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ECharts 示例</title>
+    <!-- 引入 ECharts -->
+    <script src="/now/echarts.min.js"></script>
+    <!-- js/echarts.min.js -->
+
+    <!-- 引入世界地图数据 -->
+    <script src="/now/world.js"></script>
+    <!-- js/world.js -->
+
+    <!-- 引入 ECharts GL extension for 3D maps -->
+    <script src="/now/echarts-gl.min.js"></script>
+    <!-- js/echarts-gl.min.js -->
+</head>
+
+<!-- <style>
+    div {
+        background-image: url('/now/background.jpg');
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+</style> -->
+
+<body
+    style="height: 100%; margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center;background-image: url('/now/background.jpg'); background-size: cover; background-repeat: no-repeat; background-position: center;">
+    <div id="Import" style="width: 20%; height: 40%; position: absolute; top: 10%; left: 5%;"></div>
+    <div id="Export" style="width: 20%; height: 40%; position: absolute; bottom: 10%; left: 5%;"></div>
+    <div id="mainMap" style="width: 40%; height: 80%; position: absolute; left: 30%;"></div>
+    <div id="GDP" style="width: 20%; height: 40%; position: absolute; top: 10%; right: 5%;"></div>
+    <div id="industry" style="width: 20%; height: 40%; position: absolute; bottom: 10%; right: 5%;">
+        <!-- <img src="now/background.jpg"> -->
+    </div>
+</body>
+<script>
+    // ECharts 配置代码将放在这里
+    // 初始化图表实例
+    var mapChart = echarts.init(document.getElementById('mainMap'));
+    var ImportBarChart = echarts.init(document.getElementById('Import'));
+    var ExportBarChart = echarts.init(document.getElementById('Export'));
+    var GDPlineChart = echarts.init(document.getElementById('GDP'));
+    var industryPieChart = echarts.init(document.getElementById('industry'));
+    var regionName
+    var regionData
+    //var country;
+    var year;
+    var data;
+
+    // 世界地图配置
+    var mapOption = {
+        series: [{
+            type: 'map',
+            map: 'world',
+            roam: true,  // 允许用户缩放和平移
+            emphasis: {
+                label: {
+                    show: true
+                }
+            }
+        }]
+    };
+    mapChart.setOption(mapOption);
+
+    // 加载JSON数据
+    fetch('data.json')
+        .then(response => response.json())
+        .then(json => {
+            console.log(json);
+            mapChart.on('click', function (params) {
+                regionName = params.name; // 根据地区名称获取数据
+                regionData = json.filter(item => item.地区名称 === regionName);
+                //console.log(regionData);
+                var deflautyear = json.find(item => item.地区名称 === regionName);
+                //console.log(deflautyear);
+                year = 2021;
+                if (regionData) {
+                    // 初始化数组来存储进口、出口和GDP数据
+                    let imports = [];
+                    let exports = [];
+                    let gdps = [];
+
+                    // 遍历regionData数组来收集数据
+                    regionData.forEach(region => {
+                        imports.push(region.进口占GDP比重);
+                        exports.push(region.出口占GDP比重);
+                        gdps.push(region.GDP);
+                    });
+                    // 反转数组，使其按照最早到最近的顺序排列
+                    imports.reverse();
+                    exports.reverse();
+                    gdps.reverse();
+                    //console.log(imports);
+                    // 创建一个包含进口、出口和GDP数组的数据对象
+                    data = {
+                        imports: imports,
+                        exports: exports,
+                        gdps: gdps,
+                        industries: {
+                            '农业': deflautyear.农业占GDP比重,
+                            '工业': deflautyear.工业占GDP比重,
+                            '制造业': deflautyear.制造业占GDP比重,
+                            '服务业': deflautyear.服务业占GDP比重
+                        }
+                    };
+                    updateImport(data.imports);
+                    updateExport(data.exports);
+                    updateIndustries(data.industries);
+                    updateGDP(data.gdps);
+                }
+            });
+            GDPlineChart.on('click', function (params) {
+                year = params.name; // 获取点击的年份
+                console.log(year);
+                console.log(regionData);
+                var yearData = regionData.find(item => item.年份 === year);
+                console.log(yearData);
+                if (yearData) {
+                    console.log(data);
+                    // 更新 data 对象
+                    data = {
+                        imports: data.imports,
+                        exports: data.exports,
+                        gdps: data.gdps,
+                        industries: {
+                            '农业': yearData.农业占GDP比重,
+                            '工业': yearData.工业占GDP比重,
+                            '制造业': yearData.制造业占GDP比重,
+                            '服务业': yearData.服务业占GDP比重
+                        }
+                    };
+                    console.log(data);
+                    // 更新图表
+                    updateIndustries(data.industries);
+                }
+            });
+        });
+
+
+    var years = [];
+    var baseYear = 2000; // 假设起始年份是2017
+
+    // 生成与importData长度相同的年份数组
+    for (var i = 0; i < 22; i++) {
+        years.push(baseYear + i);
+    }
+
+
+    function updateImport(data_in) {
+        var option = {
+            title: { text: regionName + ' 进口贸易' },
+            xAxis: {
+                type: 'category',
+                data: years
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [{
+                data: data_in,
+                type: 'bar'
+            }]
+        };
+        // 调试信息
+        //console.log('Updating chart with data:', data);
+        //console.log('Chart option:', option);
+
+        // 更新图表
+        ImportBarChart.setOption(option);
+    }
+
+    function updateExport(data_in) {
+        var option = {
+            title: { text: regionName + ' 出口贸易' },
+            xAxis: {
+                type: 'category',
+                data: years
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [{
+                data: data_in,
+                type: 'bar'
+            }]
+        };
+        ExportBarChart.setOption(option);
+    }
+
+    function updateIndustries(data_in) {
+        var option = {
+            title: { text: year + regionName + ' 各产业GDP占比' },
+            series: [{
+                type: 'pie',
+                data: Object.keys(data_in).map(function (key) {
+                    return { name: key, value: data_in[key] };
+                })
+            }]
+        };
+        industryPieChart.setOption(option);
+    }
+
+    function updateGDP(data_in) {
+        var option = {
+            title: { text: regionName + ' GDP 变化' },
+            xAxis: {
+                type: 'category',
+                data: years
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [{
+                data: data_in,
+                type: 'line'
+            }]
+        };
+        GDPlineChart.setOption(option);
+    }
+</script>
+
+</html>
